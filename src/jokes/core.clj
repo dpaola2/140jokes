@@ -11,18 +11,22 @@
         redis
         digest))
 
-(def creds {:host "127.0.0.1" :port 6379 :db 0})
+(defmacro redis-connect [form] 
+    `(redis/with-server ~{:host "127.0.0.1" :port 6379 :db 0} ~form))
 
 (defn new-key [story] (digest/md5 story))
 
 (defn del-key [key] (redis/del key))
 
-(defn get-story [] (redis/get (redis/randomkey)))
+(defn get-story [] 
+    (try
+        (redis/get (redis/randomkey))
+        (catch Exception e (str e))))
 
 (defn put-story [story] 
-    (redis/set 
-        (new-key story) 
-        (str story)))
+        (redis/set 
+            (new-key story) 
+            (str story)))
 
 (defn base-template [title content footer]
     (html
@@ -37,7 +41,7 @@
 (defn main-handler [{params :params}]
     (base-template 
         "140jokes" 
-        (text-bigquote (get-story))
+        (text-bigquote (redis-connect (get-story)))
         footer-text))
 
 (defn form-handler [{params :params}]
@@ -54,7 +58,7 @@
 
 (defn submit-handler [{params :params}]
     (try 
-        (put-story (params "story"))
+        (redis-connect (put-story (params "story")))
         (catch Exception e 
             (base-template 
                 "140jokes" 
@@ -71,5 +75,4 @@
 
 
 (defn -main [& args] 
-    (redis/with-server creds 
-        (run-jetty (wrap-params main-routes) {:port 8080})))
+    (run-jetty (wrap-params main-routes) {:port 8080}))
