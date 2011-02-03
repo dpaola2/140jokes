@@ -2,13 +2,13 @@
     (:use 
         compojure.core 
         ring.adapter.jetty 
+        ring.middleware.params
         hiccup.core
         jokes.styles
         jokes.elements
         :reload-all)
     (:require 
         [compojure.route :as route]
-        compojure.response
         redis
         digest
         :reload-all))
@@ -33,13 +33,13 @@
             [:div {:style content-style} content]
             [:div {:style footer-style} footer]]))
 
-(def main-handler 
+(defn main-handler [{params :params}]
     (base-template 
         "140jokes" 
         (text-bigquote (get-story))
         footer-text))
 
-(def form-handler 
+(defn form-handler [{params :params}]
     (base-template
         "140jokes"
         submit-form
@@ -51,18 +51,19 @@
         (text-noquote "404 Not found")
         footer-text))
 
-(defn submit-handler [params]
+(defn submit-handler [{params :params}]
     (try 
         (put-story (params "story"))
         (catch Exception e (base-template "140jokes" (text-noquote e) footer-text))))
 
+(defn print-handler [{params :params}] (str params))
+
 (defroutes main-routes
-    (GET "/" [] main-handler)
-    (GET "/submit" [] form-handler)
-    (POST "/submit" {params :params} 
-        (submit-handler params))
-    (route/not-found not-found-handler))
+        (GET "/" [] main-handler)
+        (GET "/submit" [] form-handler)
+        (POST "/submit" [] submit-handler)
+        (route/not-found not-found-handler))
 
 
 (defn -main [& args] 
-    (run-jetty main-routes {:port 8080}))
+    (run-jetty (wrap-params main-routes) {:port 8080}))

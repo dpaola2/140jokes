@@ -2,7 +2,7 @@
   :description "FIXME: write"
   :dependencies [[org.clojure/clojure "1.2.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
-                 [ring/ring-jetty-adapter "0.3.1"]
+                 [ring "0.3.5"]
                  [compojure "0.6.0-RC3"]
                  [hiccup "0.3.2"]
                  [digest "1.0.0-SNAPSHOT"]
