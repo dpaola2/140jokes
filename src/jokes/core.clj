@@ -5,23 +5,24 @@
         ring.middleware.params
         hiccup.core
         jokes.styles
-        jokes.elements
-        :reload-all)
+        jokes.elements)
     (:require 
         [compojure.route :as route]
         redis
-        digest
-        :reload-all))
+        digest))
+
+(def creds {:host "127.0.0.1" :port 6379 :db 0})
 
 (defn new-key [story] (digest/md5 story))
 
-(defn get-story [] 
-    (redis/with-server {:host "127.0.0.1" :port 6379 :db 0}
-        (redis/get (redis/randomkey))))
+(defn del-key [key] (redis/del key))
+
+(defn get-story [] (redis/get (redis/randomkey)))
 
 (defn put-story [story] 
-    (redis/with-server {:host "127.0.01" :port 6379 :db 0}
-        (redis/set (new-key story) (str story))))
+    (redis/set 
+        (new-key story) 
+        (str story)))
 
 (defn base-template [title content footer]
     (html
@@ -54,7 +55,11 @@
 (defn submit-handler [{params :params}]
     (try 
         (put-story (params "story"))
-        (catch Exception e (base-template "140jokes" (text-noquote e) footer-text))))
+        (catch Exception e 
+            (base-template 
+                "140jokes" 
+                (text-noquote e) 
+                footer-text))))
 
 (defn print-handler [{params :params}] (str params))
 
@@ -66,4 +71,5 @@
 
 
 (defn -main [& args] 
-    (run-jetty (wrap-params main-routes) {:port 8080}))
+    (redis/with-server creds 
+        (run-jetty (wrap-params main-routes) {:port 8080})))
