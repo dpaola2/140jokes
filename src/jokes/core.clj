@@ -14,6 +14,9 @@
 (defmacro redis-connect [form] 
     `(redis/with-server ~{:host "127.0.0.1" :port 6379 :db 0} ~form))
 
+(defn validate-story [story] 
+    (if (<= (count story) 140) true (throw (new Exception "Your story is too long."))))
+
 (defn new-key [story] (digest/md5 story))
 
 (defn del-key [key] (redis/del key))
@@ -24,9 +27,10 @@
         (catch Exception e (str e))))
 
 (defn put-story [story] 
-        (redis/set 
-            (new-key story) 
-            (str story)))
+    (validate-story story)
+    (redis/set 
+        (new-key story) 
+        (str story)))
 
 (defn base-template [title content footer]
     (html
