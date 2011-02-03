@@ -4,12 +4,14 @@
         ring.adapter.jetty 
         hiccup.core
         jokes.styles
-        jokes.elements)
+        jokes.elements
+        :reload-all)
     (:require 
         [compojure.route :as route]
         compojure.response
         redis
-        digest))
+        digest
+        :reload-all))
 
 (defn new-key [story] (digest/md5 story))
 
