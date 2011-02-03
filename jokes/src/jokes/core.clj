@@ -4,12 +4,22 @@
         ring.adapter.jetty 
         hiccup.core
         jokes.styles
-        jokes.elements
-        jokes.data)
+        jokes.elements)
     (:require 
         [compojure.route :as route]
+        compojure.response
         redis
         digest))
+
+(defn new-key [story] (digest/md5 story))
+
+(defn get-story [] 
+    (redis/with-server {:host "127.0.0.1" :port 6379 :db 0}
+        (redis/get (redis/randomkey))))
+
+(defn put-story [story] 
+    (redis/with-server {:host "127.0.01" :port 6379 :db 0}
+        (redis/set (new-key story) (str story))))
 
 (defn base-template [title content footer]
     (html
@@ -24,7 +34,7 @@
 (def main-handler 
     (base-template 
         "140jokes" 
-        (text-bigquote "The main reason Santa is so jolly is because he knows where all the bad girls live.")
+        (text-bigquote (get-story))
         footer-text))
 
 (def form-handler 
@@ -40,7 +50,9 @@
         footer-text))
 
 (defn submit-handler [params]
-    (str params))
+    (try 
+        (put-story (params "story"))
+        (catch Exception e (base-template "140jokes" (text-noquote e) footer-text))))
 
 (defroutes main-routes
     (GET "/" [] main-handler)
@@ -49,7 +61,6 @@
         (submit-handler params))
     (route/not-found not-found-handler))
 
-(defn new-key [story] (digest/md5 story))
 
 (defn -main [& args] 
     (run-jetty main-routes {:port 8080}))
