@@ -28,9 +28,15 @@
 
 (defn put-story [story] 
     (validate-story story)
-    (redis/set 
-        (new-key story) 
-        (str story)))
+    (redis/rpush "new" story))
+
+(defn moderate [save-old]
+    (if save-old 
+        (let [story (redis/get "current")]
+            (redis/set (new-key story) story)))
+    (let [story (redis/rpop "new")]
+        (let [result (redis/set "current" story)]
+            (if (= "OK" result) story (result)))))
 
 (defn base-template [title content footer]
     (html
@@ -62,12 +68,20 @@
 
 (defn submit-handler [{params :params}]
     (try 
-        (redis-connect (put-story (params "story")))
+        (do
+            (redis-connect (put-story (params "story")))
+            (main-handler))
         (catch Exception e 
             (base-template 
                 "140jokes" 
                 (text-noquote e) 
                 footer-text))))
+
+(defn moderate-handler [{params :params}] 
+    (base-template
+        "140jokes"
+        (text-bigquote (if (params "save-old") (redis-connect (moderate true)) (redis-connect (moderate false))))
+        footer-text))
 
 (defn print-handler [{params :params}] (str params))
 
@@ -75,6 +89,7 @@
         (GET "/" [] main-handler)
         (GET "/submit" [] form-handler)
         (POST "/submit" [] submit-handler)
+        (GET "/moderate" [] moderate-handler)
         (route/not-found not-found-handler))
 
 
